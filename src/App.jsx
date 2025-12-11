@@ -24,10 +24,7 @@ const ArtifactCard = ({ file, onRemove }) => {
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => setImagePreview(reader.result);
-    // Safety check for file reading
-    if (file) {
-        reader.readAsDataURL(file);
-    }
+    reader.readAsDataURL(file);
     return () => reader.abort();
   }, [file]);
   const analyzeArtifact = async (useGrounding = false) => {
@@ -93,9 +90,10 @@ const ArtifactCard = ({ file, onRemove }) => {
           ]
         }
       ];
+      const GROK_MODEL = import.meta.env.VITE_GROK_MODEL || "grok-beta";
       let useFallback = false;
       const payload = {
-        model: "grok-beta", // UPDATE: Grok vision model.
+        model: GROK_MODEL, // UPDATE: Grok vision model (configurable via env).
         messages: useFallback ? [{ role: "user", content: fallbackPrompt }] : messages,
         response_format: { type: "json_object" }, // ADDED: Enforce JSON output.
         temperature: 0.1,

@@ -2,12 +2,14 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
-export default defineConfig(({ command }) => {
-  // eslint-disable-next-line no-undef
-  const isGitHubActions = typeof process !== 'undefined' && process.env.GITHUB_ACTIONS
+const REPO_NAME = '/Grok-Scanner-/'
+
+export default defineConfig(({ mode }) => {
+  const isProduction = mode === 'production'
+  const isGitHubPages = isProduction && import.meta.env?.VITE_GITHUB_PAGES === 'true'
   return {
   plugins: [react()],
-  base: command === 'build' && isGitHubActions ? '/Grok-Scanner-/' : './',
+  base: isGitHubPages ? REPO_NAME : './',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',

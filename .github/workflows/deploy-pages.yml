@@ -35,6 +35,7 @@ jobs:
         run: npm run build
         env:
           VITE_XAI_API_KEY: ${{ secrets.VITE_XAI_API_KEY }}
+          VITE_GITHUB_PAGES: 'true'
           
       - name: Setup Pages
         uses: actions/configure-pages@v4
