@@ -286,7 +286,7 @@ Free to use, modify, and distribute. Attribution appreciated but not required.
 
 <div align="center">
 
-**[🌐 Try it now!](https://anacondy.github.io/Grok-Scanner-/)** • **[📱 Download Apps](https://github.com/anacondy/Grok-Scanner-/releases)** • **[📖 Documentation](PROJECT.md)**
+**[🌐 Try it now!](https://anacondy.github.io/Grok-Scanner-/)** • **[📱 Download Apps](https://github.com/anacondy/Grok-Scanner-/releases)** • **[📖 Wiki](WIKI.md)** • **[🚀 Deployment Guide](DEPLOYMENT.md)**
 
 Made with 🎬 and AI
 
