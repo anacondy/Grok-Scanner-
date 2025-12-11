@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Upload, Scan, Zap, X, AlertCircle, Loader2, Sparkles, FileWarning, Globe, Search, Link as LinkIcon, Lock, ShieldAlert } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Upload, Scan, X, Loader2, FileWarning, Globe, Lock, ShieldAlert } from 'lucide-react';
 /**
  * CINEMATIC ARCHIVES - MULTI-ARTIFACT ANALYZER v8
  * * Changelog:
@@ -24,10 +24,7 @@ const ArtifactCard = ({ file, onRemove }) => {
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => setImagePreview(reader.result);
-    // Safety check for file reading
-    if (file) {
-        reader.readAsDataURL(file);
-    }
+    reader.readAsDataURL(file);
     return () => reader.abort();
   }, [file]);
   const analyzeArtifact = async (useGrounding = false) => {
@@ -93,9 +90,10 @@ const ArtifactCard = ({ file, onRemove }) => {
           ]
         }
       ];
+      const GROK_MODEL = import.meta.env.VITE_GROK_MODEL || "grok-beta";
       let useFallback = false;
       const payload = {
-        model: "grok-beta", // UPDATE: Grok vision model.
+        model: GROK_MODEL, // UPDATE: Grok vision model (configurable via env).
         messages: useFallback ? [{ role: "user", content: fallbackPrompt }] : messages,
         response_format: { type: "json_object" }, // ADDED: Enforce JSON output.
         temperature: 0.1,
@@ -264,18 +262,18 @@ const ArtifactCard = ({ file, onRemove }) => {
              <span className="border border-purple-500/30 px-2 py-0.5 rounded shadow-[0_0_10px_rgba(168,85,247,0.1)]">
                 {result.is_person ? `BIRTH: ${result.year}` : result.year}
              </span>
-             <span className="hidden sm:inline opacity-50">//</span>
+             <span className="hidden sm:inline opacity-50">{'//'}</span>
              <span className="text-amber-400/90 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)] uppercase">
                 {result.genre}
              </span>
            </div>
            <p className="font-serif italic text-lg md:text-xl text-gray-200 leading-relaxed drop-shadow-md max-w-prose mx-auto opacity-90 mb-6">
-             "{result.description}"
+             &quot;{result.description}&quot;
            </p>
            {sources.length > 0 && (
              <div className="flex flex-col items-center gap-2 mt-4 animate-fade-in-up">
                <span className="text-[10px] font-mono tracking-widest text-emerald-400/60 uppercase mb-1">
-                 // INTERCEPTED_SIGNALS (SOURCES)
+                 {`// INTERCEPTED_SIGNALS (SOURCES)`}
                </span>
                <div className="flex flex-wrap justify-center gap-2">
                  {sources.slice(0, 3).map((source, idx) => (
@@ -490,7 +488,7 @@ const App = () => {
           <div className="hidden sm:block text-right">
              <div className="flex gap-4 text-amber-500/60 text-xs font-mono tracking-widest border-r-2 border-amber-500/30 pr-4">
                <span>DEEP_SCAN: READY</span>
-               <span>//</span>
+               <span>{'//'}</span>
                <span>SAFE_MODE: DISABLED</span>
              </div>
           </div>
