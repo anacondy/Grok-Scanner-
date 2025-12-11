@@ -10,6 +10,8 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout repository
@@ -114,6 +116,8 @@ jobs:
           
   build-macos:
     runs-on: macos-latest
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout repository
