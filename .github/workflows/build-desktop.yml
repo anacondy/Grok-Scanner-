@@ -1,0 +1,209 @@
+name: Build Desktop Apps
+
+on:
+  push:
+    tags: [ 'v*' ]
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install Electron
+        run: npm install --save-dev electron electron-builder
+        
+      - name: Build web assets
+        run: npm run build
+        env:
+          VITE_XAI_API_KEY: ${{ secrets.VITE_XAI_API_KEY }}
+          
+      - name: Create Electron main file
+        shell: pwsh
+        run: |
+          $electronMain = @"
+          const { app, BrowserWindow } = require('electron');
+          const path = require('path');
+          
+          function createWindow() {
+            const win = new BrowserWindow({
+              width: 1200,
+              height: 800,
+              webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true
+              },
+              icon: path.join(__dirname, 'dist/vite.svg')
+            });
+            
+            win.loadFile(path.join(__dirname, 'dist/index.html'));
+            
+            // Enable high refresh rate
+            win.webContents.setFrameRate(144);
+          }
+          
+          app.whenReady().then(createWindow);
+          
+          app.on('window-all-closed', () => {
+            if (process.platform !== 'darwin') {
+              app.quit();
+            }
+          });
+          
+          app.on('activate', () => {
+            if (BrowserWindow.getAllWindows().length === 0) {
+              createWindow();
+            }
+          });
+          "@
+          $electronMain | Out-File -FilePath electron.js -Encoding utf8
+          
+      - name: Add Electron build config to package.json
+        shell: pwsh
+        run: |
+          $packageJson = Get-Content package.json | ConvertFrom-Json
+          $packageJson | Add-Member -NotePropertyName "main" -NotePropertyValue "electron.js" -Force
+          $packageJson | Add-Member -NotePropertyName "build" -NotePropertyValue @{
+            "appId" = "com.cinematicarchives.app"
+            "productName" = "Cinematic Archives"
+            "directories" = @{
+              "output" = "release"
+            }
+            "files" = @("dist/**/*", "electron.js")
+            "win" = @{
+              "target" = "nsis"
+              "icon" = "dist/vite.svg"
+            }
+            "mac" = @{
+              "target" = "dmg"
+              "icon" = "dist/vite.svg"
+            }
+          } -Force
+          $packageJson | ConvertTo-Json -Depth 10 | Set-Content package.json
+          
+      - name: Build Windows executable
+        run: npx electron-builder --win --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinematic-archives-windows
+          path: release/*.exe
+          
+      - name: Create release (if tagged)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/*.exe
+          
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install Electron
+        run: npm install --save-dev electron electron-builder
+        
+      - name: Build web assets
+        run: npm run build
+        env:
+          VITE_XAI_API_KEY: ${{ secrets.VITE_XAI_API_KEY }}
+          
+      - name: Create Electron main file
+        run: |
+          cat > electron.js << 'EOF'
+          const { app, BrowserWindow } = require('electron');
+          const path = require('path');
+          
+          function createWindow() {
+            const win = new BrowserWindow({
+              width: 1200,
+              height: 800,
+              webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true
+              },
+              icon: path.join(__dirname, 'dist/vite.svg')
+            });
+            
+            win.loadFile(path.join(__dirname, 'dist/index.html'));
+            
+            // Enable high refresh rate
+            win.webContents.setFrameRate(144);
+          }
+          
+          app.whenReady().then(createWindow);
+          
+          app.on('window-all-closed', () => {
+            if (process.platform !== 'darwin') {
+              app.quit();
+            }
+          });
+          
+          app.on('activate', () => {
+            if (BrowserWindow.getAllWindows().length === 0) {
+              createWindow();
+            }
+          });
+          EOF
+          
+      - name: Add Electron build config to package.json
+        run: |
+          node -e "
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.main = 'electron.js';
+          pkg.build = {
+            appId: 'com.cinematicarchives.app',
+            productName: 'Cinematic Archives',
+            directories: { output: 'release' },
+            files: ['dist/**/*', 'electron.js'],
+            win: { target: 'nsis', icon: 'dist/vite.svg' },
+            mac: { target: 'dmg', icon: 'dist/vite.svg' }
+          };
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
+          
+      - name: Build macOS app
+        run: npx electron-builder --mac --x64 --arm64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinematic-archives-macos
+          path: release/*.dmg
+          
+      - name: Create release (if tagged)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/*.dmg

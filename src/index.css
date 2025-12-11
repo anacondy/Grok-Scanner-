@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0a0a1a;
+  color: #ffffff;
+}
+
+/* Performance optimizations for smooth 60+ FPS */
+* {
+  will-change: auto;
+}
+
+.animate-scan-y,
+.animate-pulse-fast,
+.animate-fade-in-up,
+.animate-slide-up {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* Enable GPU acceleration for images */
+img {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* Smooth scrolling */
+#root {
+  -webkit-overflow-scrolling: touch;
+}
