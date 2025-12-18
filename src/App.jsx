@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Upload, Scan, X, Loader2, FileWarning, Globe, Lock, ShieldAlert } from 'lucide-react';
+import { Upload, Scan, X, Loader2, FileWarning, Globe, Lock, ShieldAlert, AlertCircle } from 'lucide-react';
+
 /**
  * CINEMATIC ARCHIVES - MULTI-ARTIFACT ANALYZER v8
  * * Changelog:
@@ -340,8 +341,19 @@ const ArtifactCard = ({ file, onRemove }) => {
 
 const App = () => {
   const [artifacts, setArtifacts] = useState([]);
+  const [apiKeyStatus, setApiKeyStatus] = useState('online'); // 'online' or 'offline'
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const canvasRef = useRef(null);
   const requestRef = useRef(null);
+  
+  // Check for API key on app load
+  useEffect(() => {
+    const apiKey = import.meta.env.VITE_XAI_API_KEY;
+    if (!apiKey || apiKey.trim() === '') {
+      setApiKeyStatus('offline');
+    }
+  }, []);
+  
   // --- PARTICLE SYSTEM (Optimized for 60fps+) ---
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -433,13 +445,13 @@ const App = () => {
   const removeArtifact = (fileToRemove) => {
     setArtifacts(prev => prev.filter(f => f !== fileToRemove));
   };
+  
   return (
     <div
       className="relative min-h-screen w-full overflow-y-auto overflow-x-hidden bg-[#0a0a1a] text-white font-sans selection:bg-purple-500 selection:text-white"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
-
       <style>{`
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #050510; }
@@ -475,17 +487,21 @@ const App = () => {
       <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
       {/* MAIN CONTAINER */}
       <div className="relative z-10 w-full min-h-screen flex flex-col items-center">
-
         {/* HEADER */}
         <header className="w-full flex justify-between items-start px-4 md:px-8 pt-8 md:pt-12 pb-8 max-w-7xl mx-auto z-20">
           <div className="flex flex-col">
              <h1 className="text-3xl md:text-5xl font-bold tracking-[0.15em] font-mono text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-indigo-400 uppercase drop-shadow-[0_0_15px_rgba(139,92,246,0.5)]">
               ARCHIVE_
             </h1>
-            <span className="text-[10px] md:text-xs text-purple-400/50 font-mono tracking-[0.2em] mt-2 flex items-center gap-2">
-              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-              SYSTEM ONLINE // {artifacts.length} ARTIFACTS
-            </span>
+            <button
+              onClick={() => setShowApiKeyModal(true)}
+              className="text-[10px] md:text-xs font-mono tracking-[0.2em] mt-2 flex items-center gap-2"
+            >
+              <span className={`w-2 h-2 rounded-full ${apiKeyStatus === 'online' ? 'bg-emerald-500' : 'bg-red-500'} animate-pulse`}></span>
+              <span className={`${apiKeyStatus === 'online' ? 'text-purple-400/50' : 'text-red-400/80'}`}>
+                SYSTEM {apiKeyStatus === 'online' ? 'ONLINE' : 'OFFLINE'} // {artifacts.length} ARTIFACTS
+              </span>
+            </button>
           </div>
           <div className="hidden sm:block text-right">
              <div className="flex gap-4 text-amber-500/60 text-xs font-mono tracking-widest border-r-2 border-amber-500/30 pr-4">
@@ -495,6 +511,34 @@ const App = () => {
              </div>
           </div>
         </header>
+        {/* API KEY MODAL */}
+        {showApiKeyModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="bg-black/90 border border-purple-500/30 rounded-lg p-6 max-w-md w-full relative">
+              <button
+                onClick={() => setShowApiKeyModal(false)}
+                className="absolute top-3 right-3 p-1 text-white/50 hover:text-white"
+              >
+                <X size={18} />
+              </button>
+              <div className="flex flex-col items-center gap-4">
+                <AlertCircle className="text-red-400" size={40} />
+                <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-purple-300">
+                  API KEY REQUIRED
+                </h3>
+                <p className="text-center text-white/70 text-sm">
+                  The system is offline. To enable scanning, add your <code className="bg-purple-900/50 px-1 rounded">VITE_XAI_API_KEY</code> to the environment:
+                </p>
+                <ol className="text-left text-white/80 text-xs list-decimal pl-4 space-y-2">
+                  <li>Go to your GitHub repository <a href="https://github.com/anacondy/Grok-Scanner-/settings/secrets/actions" target="_blank" rel="noreferrer" className="text-purple-400 hover:underline">Secrets &gt; Actions</a>.</li>
+                  <li>Add a new repository secret named <code className="bg-purple-900/50 px-1 rounded">VITE_XAI_API_KEY</code>.</li>
+                  <li>Paste your xAI API key (get it from <a href="https://x.ai/api" target="_blank" rel="noreferrer" className="text-purple-400 hover:underline">x.ai/api</a>).</li>
+                  <li>Save and redeploy the site.</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        )}
         {/* CONTENT AREA */}
         <main className="w-full max-w-7xl px-4 md:px-6 pb-24 flex flex-col items-center">
           {/* DRAG & DROP ZONE */}
