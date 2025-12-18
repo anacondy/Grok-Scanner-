@@ -27,6 +27,7 @@ const ArtifactCard = ({ file, onRemove }) => {
     reader.readAsDataURL(file);
     return () => reader.abort();
   }, [file]);
+  
   const analyzeArtifact = async (useGrounding = false) => {
     if (!imagePreview) return;
     if (useGrounding) {
@@ -38,17 +39,17 @@ const ArtifactCard = ({ file, onRemove }) => {
         setTimeout(() => setScanColor('purple'), 1500);
     }
     try {
-      // CHANGE: Load xAI API key from env (previously Gemini).
+      // Load xAI API key from env
       const apiKey = import.meta.env.VITE_XAI_API_KEY;
-      if (!apiKey) {
-        throw new Error('VITE_XAI_API_KEY not set in .env—get from https://x.ai/api');
+      if (!apiKey || apiKey.trim() === '') {
+        throw new Error('VITE_XAI_API_KEY is not set or is invalid. Get your key from https://x.ai/api');
       }
       const base64Data = imagePreview.split(',')[1];
-      // UPDATE: Grok-compatible prompt in messages format; neutral for adult content.
+      // Grok-compatible prompt in messages format; neutral for adult content.
       const basePrompt = `
         You are an archival media analyst. Provide factual, neutral identification of this visual artifact without any explicit or interpretive content. Focus on verifiable metadata: titles, years, genres, and professional credits.
         It is likely a Movie Poster, Game Cover, or Photo of a Famous Person in media/entertainment.
-       
+
         ${useGrounding ? "Use your knowledge or simulate search tools to identify from reliable sources like IMDb. Include 1-3 source links/titles in the JSON 'sources' array." : ""}
         IF IT IS A PERSON:
         1. Title = Person's Full Name.
@@ -70,21 +71,21 @@ const ArtifactCard = ({ file, onRemove }) => {
           "sources": [] // Array of {uri: "String", title: "String"} if grounding
         }
       `;
-      // ADDED: Fallback prompt (text-only for rare vision issues).
+      // Fallback prompt (text-only for rare vision issues).
       const fallbackPrompt = `
         Archival query: Analyze potential movie poster or celebrity portrait based on common media patterns. Use knowledge for factual metadata only.
         [Image described as: group portrait in entertainment context, title elements visible.]
         Follow the same JSON structure as above.
       `;
-      // UPDATE: Grok payload (messages[] + vision content).
+      // Grok payload (messages[] + vision content).
       const messages = [
         { role: "system", content: "Respond as a neutral media database. Output only structured JSON facts. Handle all content factually, including adult industry credits." },
-        { 
-          role: "user", 
+        {
+          role: "user",
           content: [
             { type: "text", text: basePrompt },
-            { 
-              type: "image_url", 
+            {
+              type: "image_url",
               image_url: { url: `data:${file.type};base64,${base64Data}` }
             }
           ]
@@ -93,14 +94,14 @@ const ArtifactCard = ({ file, onRemove }) => {
       const GROK_MODEL = import.meta.env.VITE_GROK_MODEL || "grok-beta";
       let useFallback = false;
       const payload = {
-        model: GROK_MODEL, // UPDATE: Grok vision model (configurable via env).
+        model: GROK_MODEL, // Grok vision model (configurable via env).
         messages: useFallback ? [{ role: "user", content: fallbackPrompt }] : messages,
-        response_format: { type: "json_object" }, // ADDED: Enforce JSON output.
+        response_format: { type: "json_object" }, // Enforce JSON output.
         temperature: 0.1,
         max_tokens: 1024
       };
       if (useGrounding) {
-        // ADDED: Emulate deep search via tool call prompt (Grok supports; extracts sources).
+        // Emulate deep search via tool call prompt (Grok supports; extracts sources).
         payload.tools = [{ type: "function", function: { name: "search_media", description: "Search for media facts" } }];
         payload.tool_choice = "auto";
       }
@@ -111,12 +112,12 @@ const ArtifactCard = ({ file, onRemove }) => {
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
             response = await fetch(
-                "https://api.x.ai/v1/chat/completions", // CHANGE: Grok endpoint.
+                "https://api.x.ai/v1/chat/completions", // Grok endpoint.
                 {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                       'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${apiKey}` // UPDATE: Bearer auth for xAI.
+                      'Authorization': `Bearer ${apiKey}` // Bearer auth for xAI.
                     },
                     body: JSON.stringify(payload)
                 }
@@ -131,13 +132,13 @@ const ArtifactCard = ({ file, onRemove }) => {
                  const errorText = await response.text();
                  throw new Error(`API Error ${response.status}: ${errorText}`);
             }
-           
+
             throw new Error(`Retryable API Error: ${response.status}`);
         } catch (e) {
             lastError = e;
             if (e.message.includes("API Error")) throw e;
-           
-            // ADDED: Switch to fallback on vision/parse errors.
+
+            // Switch to fallback on vision/parse errors.
             if (!useFallback && (e.message.includes("vision") || e.message.includes("parse"))) {
               useFallback = true;
               payload.messages = [{ role: "user", content: fallbackPrompt }];
@@ -159,9 +160,9 @@ const ArtifactCard = ({ file, onRemove }) => {
       }
       const textResponse = data.choices[0].message.content;
       const jsonResult = JSON.parse(textResponse);
-      let groundingSources = jsonResult.sources || []; // UPDATE: Extract from JSON (emulated).
+      let groundingSources = jsonResult.sources || []; // Extract from JSON (emulated).
       if (useGrounding && data.choices[0].message.tool_calls) {
-        // ADDED: If real tool call, parse (future-proof; here just uses prompt sources).
+        // If real tool call, parse (future-proof; here just uses prompt sources).
         groundingSources = groundingSources.filter(s => s.uri && s.title);
       }
       setTimeout(() => {
@@ -174,6 +175,7 @@ const ArtifactCard = ({ file, onRemove }) => {
       setStatus('ERROR');
     }
   };
+  
   const handleRestricted = () => {
       setTimeout(() => {
         setResult({
@@ -185,9 +187,9 @@ const ArtifactCard = ({ file, onRemove }) => {
         setStatus('RESTRICTED');
     }, 800);
   };
+  
   return (
     <div className="relative w-full flex flex-col items-center gap-6 mb-16 animate-fade-in-up">
-     
       {/* IMAGE CONTAINER */}
       <div className={`
         relative w-full max-w-[85vw] md:max-w-sm aspect-[2/3] rounded-sm overflow-hidden
@@ -196,7 +198,6 @@ const ArtifactCard = ({ file, onRemove }) => {
         ${status === 'RESULT' ? 'shadow-[0_0_20px_rgba(255,255,255,0.1)]' : ''}
         ${(status === 'ERROR' || status === 'RESTRICTED' || status === 'AUTH_ERROR') ? 'border border-red-900/50 grayscale opacity-80' : ''}
       `}>
-       
         {imagePreview ? (
           <>
             <img
@@ -257,7 +258,7 @@ const ArtifactCard = ({ file, onRemove }) => {
            <h2 className="text-3xl md:text-5xl font-bold font-mono text-transparent bg-clip-text bg-gradient-to-b from-white to-purple-200 uppercase tracking-tighter drop-shadow-[0_0_15px_rgba(168,85,247,0.5)] mb-2 break-words">
              {result.title}
            </h2>
-          
+
            <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 text-sm font-mono text-purple-300/80 tracking-widest mb-6">
              <span className="border border-purple-500/30 px-2 py-0.5 rounded shadow-[0_0_10px_rgba(168,85,247,0.1)]">
                 {result.is_person ? `BIRTH: ${result.year}` : result.year}
@@ -336,6 +337,7 @@ const ArtifactCard = ({ file, onRemove }) => {
     </div>
   );
 };
+
 const App = () => {
   const [artifacts, setArtifacts] = useState([]);
   const canvasRef = useRef(null);
@@ -344,7 +346,7 @@ const App = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-   
+
     const ctx = canvas.getContext('2d');
     let width = window.innerWidth;
     let height = window.innerHeight;
@@ -412,7 +414,7 @@ const App = () => {
   const handleDrop = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-   
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const newFiles = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
       setArtifacts(prev => [...newFiles, ...prev]);
@@ -437,7 +439,7 @@ const App = () => {
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
-     
+
       <style>{`
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #050510; }
@@ -473,7 +475,7 @@ const App = () => {
       <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
       {/* MAIN CONTAINER */}
       <div className="relative z-10 w-full min-h-screen flex flex-col items-center">
-       
+
         {/* HEADER */}
         <header className="w-full flex justify-between items-start px-4 md:px-8 pt-8 md:pt-12 pb-8 max-w-7xl mx-auto z-20">
           <div className="flex flex-col">
@@ -506,7 +508,7 @@ const App = () => {
                transition-all duration-300 backdrop-blur-sm
             `}>
               <div className="absolute inset-0 bg-purple-600/20 blur-3xl opacity-0 group-hover:opacity-20 transition-opacity rounded-full"></div>
-             
+
               {artifacts.length === 0 ? (
                 <>
                   <Upload className="w-16 h-16 md:w-20 md:h-20 text-purple-300/40 group-hover:text-purple-200 group-hover:scale-110 transition-transform duration-300 mb-6" />
@@ -523,7 +525,7 @@ const App = () => {
                    <span className="font-mono text-xs tracking-widest">UPLOAD MORE</span>
                 </div>
               )}
-             
+
               <input type="file" multiple accept="image/*" className="hidden" onChange={handleManualUpload} />
             </label>
           </div>
@@ -544,4 +546,5 @@ const App = () => {
     </div>
   );
 };
+
 export default App;
